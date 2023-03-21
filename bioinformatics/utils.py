@@ -95,8 +95,9 @@ def frequency_map(text: str, k: int) -> dict:
 
 
 def pattern_matching(pattern: str, genome: str) -> list:
-    positions = []
+    '''Determine the starting positions of all matching patterns in the genome.'''
     
+    positions = []
     pat_len = len(pattern)
     gen_len = len(genome)
 
@@ -108,10 +109,17 @@ def pattern_matching(pattern: str, genome: str) -> list:
 
 
 def pattern_count(pattern: str, genome: str):
+    '''Count the number of matching patterns in the genome.'''
+    
     return len(pattern_matching(pattern, genome))
 
 
 def symbol_array(genome, symbol):
+    '''
+    Determine the number of symbols in the first half of the genome and increment/decrement
+    for every cytosine/guanine molecule.
+    '''
+
     array = {}
     n = len(genome)
     extended_genome = genome + genome[0:n//2]
@@ -131,7 +139,9 @@ def symbol_array(genome, symbol):
     return array
 
 
-def skew_array(genome):
+def skew_array(genome: str) -> list:
+    '''Determine the skew array of a genome by incrementing/decrementing by 1
+    when a guanine/cytosine molecule is encountered.'''
     arr = [0]
     gen_len = len(genome)
 
@@ -146,7 +156,9 @@ def skew_array(genome):
     return arr
 
 
-def minimum_skew(genome):
+def minimum_skew(genome: str) -> list:
+    '''Determine the positions of the minimum values in a skew array.'''
+
     positions = []
     skew = skew_array(genome)
     skew_len = len(skew)
@@ -159,14 +171,40 @@ def minimum_skew(genome):
     return positions
 
 
-def hamming_distance(genome_a, genome_b):
-    if len(genome_a) != len(genome_b):
+def hamming_distance(seq_a: str, seq_b: str) -> int:
+    '''Determine the hamming distance between two sequencs.'''
+
+    if len(seq_a) != len(seq_b):
         raise Exception("Genomes A & B don't have the same length.")
     
     dist = 0
 
-    for a,b in zip(genome_a, genome_b):
+    for a,b in zip(seq_a, seq_b):
         if a != b:
             dist += 1
 
     return dist
+
+
+def approx_pattern_matching(genome: str, pattern: str, ham_dist: int) -> list:
+    '''
+    Determine the starting positions of all matching patterns in the genome that are
+    within ham_dist of each other.
+    '''
+
+    positions = []
+
+    pat_len = len(pattern)
+    gen_len = len(genome)
+
+    for i in range(0, gen_len-pat_len+1):
+        if hamming_distance(genome[i:i+pat_len], pattern) <= ham_dist:
+            positions.append(i)
+
+    return positions
+
+
+def approx_pattern_count(genome: str, pattern: str, ham_dist: int) -> list:
+    '''Count the number of approximate matching patterns in the genome.'''
+
+    return len(approx_pattern_matching(genome, pattern, ham_dist))

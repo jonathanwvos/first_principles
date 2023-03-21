@@ -1,4 +1,6 @@
 from utils import (
+    approx_pattern_count,
+    approx_pattern_matching,
     frequent_words,
     hamming_distance,
     minimum_skew,
@@ -102,6 +104,34 @@ class TestBioinformatics(TestCase):
 
         for a, b, d in test_cases:
             self.assertEqual(hamming_distance(a, b), d)
+
+
+    def test_approx_pattern_matching(self):
+        test_cases = [
+            ['ATTCTGGA', 'CGCCCGAATCCAGAACGCATTCCCATATTTCGGGACCACTGGCCTCCACGGTACGGACGTCAATCAAAT', 3, [6, 7, 26, 27]],
+            ['AAA', 'TTTTTTAAATTTTAAATTTTTT', 2, [4, 5, 6, 7, 8, 11, 12, 13, 14, 15]],
+            ['GAGCGCTGG', 'GAGCGCTGGGTTAACTCGCTACTTCCCGACGAGCGCTGTGGCGCAAATTGGCGATGAAACTGCAGAGAGAACTGGTCATCCAACTGAATTCTCCCCGCTATCGCATTTTGATGCGCGCCGCGTCGATT', 2, [0, 30, 66]],
+            ['AATCCTTTCA', 'CCAAATCCCCTCATGGCATGCATTCCCGCAGTATTTAATCCTTTCATTCTGCATATAAGTAGTGAAGGTATAGAAACCCGTTCAAGCCCGCAGCGGTAAAACCGAGAACCATGATGAATGCACGGCGATTGCGCCATAATCCAAACA', 3, [3, 36, 74, 137]],
+            ['CCGTCATCC', 'CCGTCATCCGTCATCCTCGCCACGTTGGCATGCATTCCGTCATCCCGTCAGGCATACTTCTGCATATAAGTACAAACATCCGTCATGTCAAAGGGAGCCCGCAGCGGTAAAACCGAGAACCATGATGAATGCACGGCGATTGC', 3, [0, 7, 36, 44, 48, 72, 79, 112]],
+            ['TTT', 'AAAAAA', 3, [0, 1, 2, 3]],
+            ['CCA', 'CCACCT', 0, [0]],
+            ['GTGCCG', 'AGCGTGCCGAAATATGCCGCCAGACCTGCTGCGGTGGCCTCGCCGACTTCACGGATGCCAAGTGCATAGAGGAAGCGAGCAAAGGTGGTTTCTTTCGCTTTATCCAGCGCGTTAACCACGTTCTGTGCCGACTTT', 3, [3, 13, 16, 22, 25, 27, 28, 30, 33, 34, 36, 39, 47, 54, 61, 71, 76, 84, 87, 91, 101, 106, 119, 124]]
+        ]
+
+        for pattern, seq, ham_dist, test_positions in test_cases:
+            self.assertEqual(approx_pattern_matching(seq, pattern, ham_dist), test_positions)
+
+
+    def test_approx_pattern_count(self):
+        test_cases = [
+            ['GAGG', 'TTTAGAGCCTTCAGAGG', 2, 4],
+            ['AA', 'AAA', 0, 2],
+            ['ATA', 'ATA', 1, 1],
+            ['GTGCCG', 'AGCGTGCCGAAATATGCCGCCAGACCTGCTGCGGTGGCCTCGCCGACTTCACGGATGCCAAGTGCATAGAGGAAGCGAGCAAAGGTGGTTTCTTTCGCTTTATCCAGCGCGTTAACCACGTTCTGTGCCGACTTT', 3, 24]
+        ]
+
+        for pattern, seq, ham_dist, test_count in test_cases:
+            self.assertEqual(approx_pattern_count(seq, pattern, ham_dist), test_count)
 
 
 if __name__ == '__main__':

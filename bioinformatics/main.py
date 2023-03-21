@@ -1,9 +1,11 @@
-from utils import skew_array, minimum_skew
+from utils import hamming_distance
 from time import time
 
 
 if __name__ == '__main__':
-    genome = 'CATGGGCATCGGCCATACGCC'
+    genome = 'GATACACTTCCCGAGTAGGTACTG'
     test_res = [0, -1, -1, -1, 0, 1, 2, 1, 1, 1, 0, 1, 2, 1, 0, 0, 0, 0, -1, 0, -1, -2]
 
-    print(minimum_skew(genome))
+    print(hamming_distance('CTACAGCAATACGATCATATGCGGATCCGCAGTGGCCGGTAGACACACGT', 'CTACCCCGCTGCTCAATGACCGGGACTAAAGAGGCGAAGATTATGGTGTG'))
+
+    

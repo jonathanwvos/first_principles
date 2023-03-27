@@ -1,19 +1,66 @@
 from utils import (
     approx_pattern_count,
     approx_pattern_matching,
+    consensus_motif,
+    count_motifs,
     frequent_words,
+    greedy_motif_search,
     hamming_distance,
     minimum_skew,
+    motif_profiles,
+    pattern_count,
     pattern_matching,
+    profile_most_probable_kmer,
+    profile_prob,
     reverse_complement,
+    score_consensus_motif,
     skew_array,
     symbol_array
 )
 from unittest import TestCase, main
 
+import numpy as np
+
 
 class TestBioinformatics(TestCase):
     '''The testing class for all bioinformatics related tests.'''
+
+    def test_pattern_count(self):
+        test_cases = [
+            [
+                'GCGCG',
+                'GCG',
+                2
+            ],[
+                'ACGTACGTACGT',
+                'CG',
+                3
+            ],[
+                'AAAGAGTGTCTGATAGCAGCTTCTGAACTGGTTACCTGCCGTGAGTAAATTAAATTTTATTGACTTAGGTCACTAAATACTTTAACCAATATAGGCATAGCGCACAGACAGATAATAATTACAGAGTACACAACATCCAT',
+                'AAA',
+                4
+            ],[
+                'AGCGTGCCGAAATATGCCGCCAGACCTGCTGCGGTGGCCTCGCCGACTTCACGGATGCCAAGTGCATAGAGGAAGCGAGCAAAGGTGGTTTCTTTCGCTTTATCCAGCGCGTTAACCACGTTCTGTGCCGACTTT',
+                'TTT',
+                4
+            ],[
+                'GGACTTACTGACGTACG',
+                'ACT',
+                2
+            ],[
+                'ATCCGATCCCATGCCCATG',
+                'CC',
+                5
+            ],[
+                'CTGTTTTTGATCCATGATATGTTATCTCTCCGTCATCAGAAGAACAGTGACGGATCGCCCTCTCTCTTGGTCAGGCGACCGTTTGCCATAATGCCCATGCTTTCCAGCCAGCTCTCAAACTCCGGTGACTCGCGCAGGTTGAGTA',
+                'CTC',
+                9
+            ]
+        ]
+
+        for genome, pattern, count in test_cases:
+            self.assertEqual(pattern_count(pattern, genome), count)
+
 
     def test_frequent_words(self):
         test_cases = [
@@ -105,6 +152,10 @@ class TestBioinformatics(TestCase):
         for a, b, d in test_cases:
             self.assertEqual(hamming_distance(a, b), d)
 
+        exception_case = test_cases[0]
+        exception_case[0] = exception_case[0:-2]
+        with self.assertRaises(Exception):
+            hamming_distance(exception_case[0], exception_case[1])
 
     def test_approx_pattern_matching(self):
         test_cases = [
@@ -132,6 +183,239 @@ class TestBioinformatics(TestCase):
 
         for pattern, seq, ham_dist, test_count in test_cases:
             self.assertEqual(approx_pattern_count(seq, pattern, ham_dist), test_count)
+
+
+    def test_count_motifs(self):
+        test_cases = [
+            [['AACGTA', 'CCCGTT', 'CACCTT', 'GGATTA', 'TTCCGG'], {'A': np.array([1, 2, 1, 0, 0, 2]), 'C': np.array([2, 1, 4, 2, 0, 0]), 'G': np.array([1, 1, 0, 2, 1, 1]), 'T': np.array([1, 1, 0, 1, 4, 2])}],
+            [['GTACAACTGT', 'CAACTATGAA', 'TCCTACAGGA', 'AAGCAAGGGT', 'GCGTACGACC', 'TCGTCAGCGT', 'AACAAGGTCA', 'CTCAGGCGTC', 'GGATCCAGGT', 'GGCAAGTACC'], {'A': np.array([2, 3, 3, 3, 6, 4, 2, 2, 1, 3]), 'C': np.array([2, 3, 4, 3, 2, 3, 2, 1, 3, 3]), 'G': np.array([4, 2, 3, 0, 1, 3, 4, 5, 5, 0]), 'T': np.array([2, 2, 0, 4, 1, 0, 2, 2, 1, 4])}]
+        ]
+
+        with self.assertRaises(Exception):
+            count_motifs([])
+
+        with self.assertRaises(Exception):
+            count_motifs([''])
+
+        for motifs, exp_results in test_cases:
+            results = count_motifs(motifs)
+
+            for n in ['A', 'C', 'G', 'T']:
+                self.assertTrue(np.array_equal(results[n], exp_results[n]))
+
+
+    def test_motif_profiles(self):
+        test_cases = [
+            [['AACGTA', 'CCCGTT', 'CACCTT', 'GGATTA', 'TTCCGG'], {'A': np.array([1, 2, 1, 0, 0, 2])/5, 'C': np.array([2, 1, 4, 2, 0, 0])/5, 'G': np.array([1, 1, 0, 2, 1, 1])/5, 'T': np.array([1, 1, 0, 1, 4, 2])/5}],
+            [['GTACAACTGT', 'CAACTATGAA', 'TCCTACAGGA', 'AAGCAAGGGT', 'GCGTACGACC', 'TCGTCAGCGT', 'AACAAGGTCA', 'CTCAGGCGTC', 'GGATCCAGGT', 'GGCAAGTACC'], {'A': np.array([2, 3, 3, 3, 6, 4, 2, 2, 1, 3])/10, 'C': np.array([2, 3, 4, 3, 2, 3, 2, 1, 3, 3])/10, 'G': np.array([4, 2, 3, 0, 1, 3, 4, 5, 5, 0])/10, 'T': np.array([2, 2, 0, 4, 1, 0, 2, 2, 1, 4])/10}]
+        ]
+
+        with self.assertRaises(Exception):
+            motif_profiles([])
+
+        with self.assertRaises(Exception):
+            motif_profiles([''])
+
+        for profile, exp_results in test_cases:
+            results = motif_profiles(profile)
+
+            for n in ['A', 'C', 'G', 'T']:
+                self.assertTrue(np.array_equal(results[n], exp_results[n]))
+
+
+    def test_consensus_motifs(self):
+        test_cases = [
+            [['AACGTA', 'CCCGTT', 'CACCTT', 'GGATTA', 'TTCCGG'], 'CACCTA'],
+            [['GTACAACTGT', 'CAACTATGAA', 'TCCTACAGGA', 'AAGCAAGGGT', 'GCGTACGACC', 'TCGTCAGCGT', 'AACAAGGTCA', 'CTCAGGCGTC', 'GGATCCAGGT', 'GGCAAGTACC'], 'GACTAAGGGT']
+        ]
+
+        for motifs, test_consensus in test_cases:
+            self.assertTrue(hamming_distance(consensus_motif(motifs), test_consensus) <= 2)
+
+
+    def test_score_consensus_motif(self):
+        test_cases = [
+            [['AACGTA', 'CCCGTT', 'CACCTT', 'GGATTA', 'TTCCGG'], 14],
+            [['GTACAACTGT', 'CAACTATGAA', 'TCCTACAGGA', 'AAGCAAGGGT', 'GCGTACGACC', 'TCGTCAGCGT', 'AACAAGGTCA', 'CTCAGGCGTC', 'GGATCCAGGT', 'GGCAAGTACC'], 57]
+        ]
+
+        for motifs, test_score in test_cases:
+            self.assertEqual(score_consensus_motif(motifs), test_score)
+
+
+    def test_profile_prob(self):
+        test_cases = [
+            ['ACGGGGATTACC',
+            {'A': [0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1, 0.1, 0.1, 0.3, 0.0],
+            'C': [0.1, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.1, 0.2, 0.4, 0.6],
+            'G': [0.0, 0.0, 1.0, 1.0, 0.9, 0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0],
+            'T': [0.7, 0.2, 0.0, 0.0, 0.1, 0.1, 0.0, 0.5, 0.8, 0.7, 0.3, 0.4]},
+            0.000839808],
+            ['TCGGGGGCCACC',
+            {'A': [0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1, 0.1, 0.1, 0.3, 0.0],
+            'C': [0.1, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.1, 0.2, 0.4, 0.6],
+            'G': [0.0, 0.0, 1.0, 1.0, 0.9, 0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0],
+            'T': [0.7, 0.2, 0.0, 0.0, 0.1, 0.1, 0.0, 0.5, 0.8, 0.7, 0.3, 0.4]},
+            3.26592e-05]
+        ]
+
+        for profile, test_scores, test_prob in test_cases:
+            self.assertAlmostEqual(profile_prob(profile, test_scores), test_prob, 9)
+
+
+    def test_profile_most_probable_kmer(self):
+        test_cases = [
+            [
+                'ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT',
+                5,
+                {'A': [0.2, 0.2, 0.3, 0.2, 0.3],
+                'C': [0.4, 0.3, 0.1, 0.5, 0.1],
+                'G': [0.3, 0.3, 0.5, 0.2, 0.4],
+                'T': [0.1, 0.2, 0.1, 0.1, 0.2]},
+                'CCGAG'
+            ],
+            [
+                'AGCAGCTTTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATCTGAACTGGTTACCTGCCGTGAGTAAAT',
+                8,
+                {'A': [0.7, 0.2, 0.1, 0.5, 0.4, 0.3, 0.2, 0.1],
+                'C': [0.2, 0.2, 0.5, 0.4, 0.2, 0.3, 0.1, 0.6],
+                'G': [0.1, 0.3, 0.2, 0.1, 0.2, 0.1, 0.4, 0.2],
+                'T': [0.0, 0.3, 0.2, 0.0, 0.2, 0.3, 0.3, 0.1]},
+                'AGCAGCTT'
+            ],
+            [
+                'TTACCATGGGACCGCTGACTGATTTCTGGCGTCAGCGTGATGCTGGTGTGGATGACATTCCGGTGCGCTTTGTAAGCAGAGTTTA',
+                12,
+                {'A': [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.1, 0.2, 0.3, 0.4, 0.5],
+                'C': [0.3, 0.2, 0.1, 0.1, 0.2, 0.1, 0.1, 0.4, 0.3, 0.2, 0.2, 0.1],
+                'G': [0.2, 0.1, 0.4, 0.3, 0.1, 0.1, 0.1, 0.3, 0.1, 0.1, 0.2, 0.1],
+                'T': [0.3, 0.4, 0.1, 0.1, 0.1, 0.1, 0.0, 0.2, 0.4, 0.4, 0.2, 0.3]},
+                'AAGCAGAGTTTA'
+            ],
+            [
+                'AACCGGTT',
+                3,
+                {'A': [1.0, 1.0, 1.0],
+                'C': [0.0, 0.0, 0.0],
+                'G': [0.0, 0.0, 0.0],
+                'T': [0.0, 0.0, 0.0]},
+                'AAC'
+            ],
+            [
+                'TTACCATGGGACCGCTGACTGATTTCTGGCGTCAGCGTGATGCTGGTGTGGATGACATTCCGGTGCGCTTTGTAAGCAGAGTTTA',
+                5,
+                {'A': [0.2, 0.2, 0.3, 0.2, 0.3],
+                'C': [0.4, 0.3, 0.1, 0.5, 0.1],
+                'G': [0.3, 0.3, 0.5, 0.2, 0.4],
+                'T': [0.1, 0.2, 0.1, 0.1, 0.2]},
+                'CAGCG'
+            ]
+        ]
+
+        for seq, k, profile_scores, kmer in test_cases:
+            self.assertEqual(profile_most_probable_kmer(seq, k, profile_scores), kmer)
+
+
+    def test_greedy_motif_search(self):
+        test_cases = [
+            [
+                3, 5, 
+                ['GGCGTTCAGGCA',
+                'AAGAATCAGTCA',
+                'CAAGGAGTTCGC',
+                'CACGTCAATCAC',
+                'CAATAATATTCG'],
+                ['CAG',
+                'CAG',
+                'CAA',
+                'CAA',
+                'CAA']
+            ],
+            [
+                3, 4,
+                ['GCCCAA',
+                'GGCCTG',
+                'AACCTA',
+                'TTCCTT'],
+                ['GCC',
+                'GCC',
+                'AAC',
+                'TTC']
+            ],
+            [
+                5, 8,
+                ['GAGGCGCACATCATTATCGATAACGATTCGCCGCATTGCC',
+                'TCATCGAATCCGATAACTGACACCTGCTCTGGCACCGCTC',
+                'TCGGCGGTATAGCCAGAAAGCGTAGTGCCAATAATTTCCT',
+                'GAGTCGTGGTGAAGTGTGGGTTATGGGGAAAGGCAGACTG',
+                'GACGGCAACTACGGTTACAACGCAGCAACCGAAGAATATT',
+                'TCTGTTGTTGCTAACACCGTTAAAGGCGGCGACGGCAACT',
+                'AAGCGGCCAACGTAGGCGCGGCTTGGCATCTCGGTGTGTG',
+                'AATTGAAAGGCGCATCTTACTCTTTTCGCTTTCAAAAAAA'],
+                ['GAGGC',
+                'TCATC',
+                'TCGGC',
+                'GAGTC',
+                'GCAGC',
+                'GCGGC',
+                'GCGGC',
+                'GCATC']
+            ],
+            [
+                6, 5,
+                ['GCAGGTTAATACCGCGGATCAGCTGAGAAACCGGAATGTGCGT',
+                'CCTGCATGCCCGGTTTGAGGAACATCAGCGAAGAACTGTGCGT',
+                'GCGCCAGTAACCCGTGCCAGTCAGGTTAATGGCAGTAACATTT',
+                'AACCCGTGCCAGTCAGGTTAATGGCAGTAACATTTATGCCTTC',
+                'ATGCCTTCCGCGCCAATTGTTCGTATCGTCGCCACTTCGAGTG'],
+                ['GTGCGT',
+                'GTGCGT',
+                'GCGCCA',
+                'GTGCCA',
+                'GCGCCA']
+            ],
+            [
+                5, 8,
+                ['GACCTACGGTTACAACGCAGCAACCGAAGAATATTGGCAA',
+                'TCATTATCGATAACGATTCGCCGGAGGCCATTGCCGCACA',
+                'GGAGTCTGGTGAAGTGTGGGTTATGGGGCAGACTGGGAAA',
+                'GAATCCGATAACTGACACCTGCTCTGGCACCGCTCTCATC',
+                'AAGCGCGTAGGCGCGGCTTGGCATCTCGGTGTGTGGCCAA',
+                'AATTGAAAGGCGCATCTTACTCTTTTCGCTTAAAATCAAA',
+                'GGTATAGCCAGAAAGCGTAGTTAATTTCGGCTCCTGCCAA',
+                'TCTGTTGTTGCTAACACCGTTAAAGGCGGCGACGGCAACT'],
+                ['GCAGC',
+                'TCATT',
+                'GGAGT',
+                'TCATC',
+                'GCATC',
+                'GCATC',
+                'GGTAT',
+                'GCAAC']
+            ],
+            [
+                4, 8,
+                ['GACCTACGGTTACAACGCAGCAACCGAAGAATATTGGCAA',
+                'TCATTATCGATAACGATTCGCCGGAGGCCATTGCCGCACA',
+                'GGAGTCTGGTGAAGTGTGGGTTATGGGGCAGACTGGGAAA',
+                'GAATCCGATAACTGACACCTGCTCTGGCACCGCTCTCATC',
+                'AAGCGCGTAGGCGCGGCTTGGCATCTCGGTGTGTGGCCAA',
+                'AATTGAAAGGCGCATCTTACTCTTTTCGCTTAAAATCAAA',
+                'GGTATAGCCAGAAAGCGTAGTTAATTTCGGCTCCTGCCAA',
+                'TCTGTTGTTGCTAACACCGTTAAAGGCGGCGACGGCAACT'],
+                ['CGCA',
+                'CGCA',
+                'GGAG',
+                'GGCA',
+                'GGCA',
+                'CGCA',
+                'GGTA',
+                'GGCA']
+            ]
+        ]
+
+        for k, t, dna, test_motifs in test_cases:
+            self.assertEqual(greedy_motif_search(dna, k, t), test_motifs)
 
 
 if __name__ == '__main__':

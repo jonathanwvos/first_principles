@@ -1,11 +1,13 @@
-from tqdm import tqdm as progress_bar
+import numpy as np
 
+
+NUCLEOTIDES = ['A', 'C', 'G', 'T']
 
 DNA_COMP_MAP = {
     'A':'T',
-    'T':'A',
     'C':'G',
-    'G':'C'
+    'G':'C',
+    'T':'A'
 }
 
 RNA_COMP_MAP = {
@@ -18,7 +20,7 @@ RNA_COMP_MAP = {
 
 def count_nucleotides(dna: str) -> dict:
     '''Count the number of nucleotides in a dna sequence.'''
-    nucleotides = dict.fromkeys(['A', 'C', 'G', 'T'])
+    nucleotides = dict.fromkeys(NUCLEOTIDES)
     dna = dna.upper()
 
     for n in nucleotides:
@@ -208,3 +210,150 @@ def approx_pattern_count(genome: str, pattern: str, ham_dist: int) -> list:
     '''Count the number of approximate matching patterns in the genome.'''
 
     return len(approx_pattern_matching(genome, pattern, ham_dist))
+
+
+def count_motifs(motifs: list) -> dict:
+    '''Count the number of occurrences of each nucleotide in each colum
+    of the motifs.'''
+
+    if len(motifs) == 0 or len(motifs[0]) == 0:
+        raise Exception('motifs args is empty.')
+
+    motif_len = len(motifs[0])
+    count = {
+        'A': np.zeros(motif_len),
+        'C': np.zeros(motif_len),
+        'G': np.zeros(motif_len),
+        'T': np.zeros(motif_len)
+    }
+    no_motifs = len(motifs)
+
+    for i in range(no_motifs):
+        for j in range(motif_len):
+            symbol = motifs[i][j]
+            count[symbol][j] += 1
+
+    return count
+
+
+def motif_profiles(motifs):
+    '''Determine the profiles of the motifs by normalizing nucleotides frequencies.'''
+
+    if len(motifs) == 0 or len(motifs[0]) == 0:
+        raise Exception('motifs args is empty.')
+    
+    no_motifs = len(motifs)
+    profiles = count_motifs(motifs)
+    for n in profiles:
+        profiles[n] = profiles[n]/no_motifs
+
+    return profiles
+
+
+def consensus_motif(motifs):
+    '''
+    Determine the consensus motif by selecting the nucleotides with the highest probability using motif profiles.
+    Ties are chosen randomly.
+    '''
+
+    mps = motif_profiles(motifs)
+    mp_arr = np.array(list(mps.values())).T
+    con_motif = ''
+
+    for m in mp_arr:
+        max_profile = np.max(m)
+        max_indices = np.where(m == max_profile)
+        max_index = np.random.choice(max_indices[0], 1)
+        con_motif += NUCLEOTIDES[max_index[0]]
+
+    return con_motif
+
+
+def score_consensus_motif(motifs):
+    '''
+    Determine the score for the consensus motifs by summing the total number
+    of different nucleotides in the j-th column.
+    '''
+
+    score = 0
+    con_motif = consensus_motif(motifs)
+    motif_len = len(motifs[0])
+
+    for i in range(motif_len):
+        for motif in motifs:
+            if motif[i] != con_motif[i]:
+                score += 1
+
+    return score
+
+
+def profile_prob(profile, scores):
+    '''
+    Determine the probability of a k-mer being close to a consensus motif.
+    
+    Parameters
+    ----------
+    profile : str
+        A candidate profile
+
+    scores: dict
+        A dictionary of scores of the form {'A': [], 'C': [], 'G': [], 'T': []}
+    '''
+
+    prob = 1.
+
+    for idx, n in enumerate(profile):
+        prob *= scores[n][idx]
+
+    return prob
+
+
+def profile_most_probable_kmer(seq, k, scores):
+    '''
+    Determine the profile-most probably k-mer in the sequence provided.
+    
+    Parameters
+    ----------
+
+    seq : str
+        A string representing a genetic sequence or sub-sequence
+
+    k : int
+        The desired length of the k-mer to find
+
+    scores: dict
+        A dictionary of scores of the form {'A': [], 'C': [], 'G': [], 'T': []}
+    '''
+
+    seq_len = len(seq)
+    most_prob_profile = ''
+    highest_prob = -1.
+
+    for i in range(0, seq_len - k + 1):
+        profile = seq[i: i+k]
+        prof_prob = profile_prob(profile, scores)
+
+        if prof_prob > highest_prob:
+            most_prob_profile = profile
+            highest_prob = prof_prob
+
+    return most_prob_profile
+
+
+def greedy_motif_search(dna, k, t):
+    '''Greedily determine the best rated motifs for a dna sequence.'''
+
+    best_motifs = [d[0:k] for d in dna]
+    dna_len = len(dna[0])
+
+    for i in range(dna_len-k+1):
+        motifs = [dna[0][i:i+k]]
+
+        for j in range(1, t):
+            profile = motif_profiles(motifs[0:j])
+            motifs.append(profile_most_probable_kmer(dna[j], k, profile))
+
+        if score_consensus_motif(motifs) < score_consensus_motif(best_motifs):
+            best_motifs = motifs
+
+    return best_motifs

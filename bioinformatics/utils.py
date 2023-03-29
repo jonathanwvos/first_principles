@@ -1,21 +1,7 @@
 import numpy as np
+from math import log2
 
-
-NUCLEOTIDES = ['A', 'C', 'G', 'T']
-
-DNA_COMP_MAP = {
-    'A':'T',
-    'C':'G',
-    'G':'C',
-    'T':'A'
-}
-
-RNA_COMP_MAP = {
-    'A':'U',
-    'U':'A',
-    'C':'G',
-    'G':'C'
-}
+from constants import AMINO_ACID_MAP, DNA_COMP_MAP, NUCLEOTIDES, RNA_COMP_MAP
 
 
 def count_nucleotides(dna: str) -> dict:
@@ -357,3 +343,47 @@ def greedy_motif_search(dna, k, t):
             best_motifs = motifs
 
     return best_motifs
+
+
+def translate_rna(mrna: str) -> str:
+    '''Translate mRNA sequence to amino acid sequence.'''
+
+    aa_seq = ''
+    mrna_len = len(mrna)
+
+    for i in range(0, mrna_len, 3):
+        codon = mrna[i:i+3]
+        aa_seq += AMINO_ACID_MAP[codon]
+
+    return aa_seq
+
+
+def dist_entropy(dist: list) -> float:
+    '''Compute the entropy of the distribution provided.'''
+    en = 0
+
+    for p in dist:
+        if p != 0:
+            en += p*log2(p)
+
+    return -en
+
+def profile_entropy(profile: dict) -> float:
+    '''
+    Compute the entropy of the motif profile provided provided.
+    
+    profile: dict
+        A dictionary of profile of the form {'A': [], 'C': [], 'G': [], 'T': []}
+    '''
+
+    dists = []
+    for key in profile:
+        dists.append(profile[key])
+
+    dists = np.array(dists).T
+
+    en = 0
+    for dist in dists:
+        en += dist_entropy(dist)
+
+    return en

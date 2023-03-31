@@ -12,6 +12,8 @@ from utils import (
     pattern_matching,
     profile_most_probable_kmer,
     profile_prob,
+    pseudo_count_motifs,
+    pseudo_motif_profiles,
     reverse_complement,
     score_consensus_motif,
     skew_array,
@@ -416,6 +418,62 @@ class TestBioinformatics(TestCase):
 
         for k, t, dna, test_motifs in test_cases:
             self.assertEqual(greedy_motif_search(dna, k, t), test_motifs)
+
+    def test_pseudo_counts(self):
+        test_cases = [
+            [
+                ['AACGTA',
+                'CCCGTT',
+                'CACCTT',
+                'GGATTA',
+                'TTCCGG'],
+                {'A': [2, 3, 2, 1, 1, 3], 'C': [3, 2, 5, 3, 1, 1], 'T': [2, 2, 1, 2, 5, 3], 'G': [2, 2, 1, 3, 2, 2]}
+            ],
+            [
+                ['GTACAACTGT',
+                'CAACTATGAA',
+                'TCCTACAGGA',
+                'AAGCAAGGGT',
+                'GCGTACGACC',
+                'TCGTCAGCGT',
+                'AACAAGGTCA',
+                'CTCAGGCGTC',
+                'GGATCCAGGT',
+                'GGCAAGTACC'],
+                {'A': [3, 4, 4, 4, 7, 5, 3, 3, 2, 4], 'C': [3, 4, 5, 4, 3, 4, 3, 2, 4, 4], 'T': [3, 3, 1, 5, 2, 1, 3, 3, 2, 5], 'G': [5, 3, 4, 1, 2, 4, 5, 6, 6, 1]}
+            ]
+        ]
+
+        for motifs, test_results in test_cases:
+            self.assertTrue(pseudo_count_motifs(motifs), test_results)
+
+    def test_pseudo_profiles(self):
+        test_cases = [
+            [
+                ['AACGTA',
+                'CCCGTT',
+                'CACCTT',
+                'GGATTA',
+                'TTCCGG'],
+                {'A': [0.2222222222222222, 0.3333333333333333, 0.2222222222222222, 0.1111111111111111, 0.1111111111111111, 0.3333333333333333], 'C': [0.3333333333333333, 0.2222222222222222, 0.5555555555555556, 0.3333333333333333, 0.1111111111111111, 0.1111111111111111], 'T': [0.2222222222222222, 0.2222222222222222, 0.1111111111111111, 0.2222222222222222, 0.5555555555555556, 0.3333333333333333], 'G': [0.2222222222222222, 0.2222222222222222, 0.1111111111111111, 0.3333333333333333, 0.2222222222222222, 0.2222222222222222]},
+            ],
+            [
+                ['GTACAACTGT',
+                'CAACTATGAA',
+                'TCCTACAGGA',
+                'AAGCAAGGGT',
+                'GCGTACGACC',
+                'TCGTCAGCGT',
+                'AACAAGGTCA',
+                'CTCAGGCGTC',
+                'GGATCCAGGT',
+                'GGCAAGTACC'],
+                {'A': [0.21428571428571427, 0.2857142857142857, 0.2857142857142857, 0.2857142857142857, 0.5, 0.35714285714285715, 0.21428571428571427, 0.21428571428571427, 0.14285714285714285, 0.2857142857142857], 'C': [0.21428571428571427, 0.2857142857142857, 0.35714285714285715, 0.2857142857142857, 0.21428571428571427, 0.2857142857142857, 0.21428571428571427, 0.14285714285714285, 0.2857142857142857, 0.2857142857142857], 'T': [0.21428571428571427, 0.21428571428571427, 0.07142857142857142, 0.35714285714285715, 0.14285714285714285, 0.07142857142857142, 0.21428571428571427, 0.21428571428571427, 0.14285714285714285, 0.35714285714285715], 'G': [0.35714285714285715, 0.21428571428571427, 0.2857142857142857, 0.07142857142857142, 0.14285714285714285, 0.2857142857142857, 0.35714285714285715, 0.42857142857142855, 0.42857142857142855, 0.07142857142857142]}
+            ]
+        ]
+
+        for motifs, test_results in test_cases:
+            self.assertTrue(pseudo_motif_profiles(motifs), test_results)
 
 
 if __name__ == '__main__':

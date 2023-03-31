@@ -230,6 +230,7 @@ def motif_profiles(motifs):
     
     no_motifs = len(motifs)
     profiles = count_motifs(motifs)
+
     for n in profiles:
         profiles[n] = profiles[n]/no_motifs
 
@@ -387,3 +388,45 @@ def profile_entropy(profile: dict) -> float:
         en += dist_entropy(dist)
 
     return en
+
+
+def pseudo_count_motifs(motifs: list) -> dict:
+    '''
+    Count the number of occurrences of each nucleotide in each colum
+    of the motifs. If lap_succsion is set to true then apply Laplace's rule of
+    Succession to prevent non-zero probabilities from arising.
+    '''
+
+    if len(motifs) == 0 or len(motifs[0]) == 0:
+        raise Exception('motifs args is empty.')
+
+    motif_len = len(motifs[0])
+    count = {
+        'A': np.ones(motif_len, dtype='uint8'),
+        'C': np.ones(motif_len, dtype='uint8'),
+        'G': np.ones(motif_len, dtype='uint8'),
+        'T': np.ones(motif_len, dtype='uint8')
+    }
+    no_motifs = len(motifs)
+
+    for i in range(no_motifs):
+        for j in range(motif_len):
+            symbol = motifs[i][j]
+            count[symbol][j] += 1
+
+    return count
+
+
+def pseudo_motif_profiles(motifs):
+    '''Determine the profiles of the motifs by normalizing nucleotides frequencies.'''
+
+    if len(motifs) == 0 or len(motifs[0]) == 0:
+        raise Exception('motifs args is empty.')
+    
+    no_motifs = len(motifs)
+    profiles = pseudo_count_motifs(motifs)
+
+    for n in profiles:
+        profiles[n] = profiles[n]/no_motifs
+
+    return profiles

@@ -1,8 +1,8 @@
-import numpy as np
-from math import log2
-
 from constants import AMINO_ACID_MAP, DNA_COMP_MAP, NUCLEOTIDES, RNA_COMP_MAP
+from math import log2
+from random import randint
 
+import numpy as np
 
 def count_nucleotides(dna: str) -> dict:
     '''Count the number of nucleotides in a dna sequence.'''
@@ -222,7 +222,7 @@ def count_motifs(motifs: list) -> dict:
     return count
 
 
-def motif_profiles(motifs):
+def profiles(motifs):
     '''Determine the profiles of the motifs by normalizing nucleotides frequencies.'''
 
     if len(motifs) == 0 or len(motifs[0]) == 0:
@@ -243,7 +243,7 @@ def consensus_motif(motifs):
     Ties are chosen randomly.
     '''
 
-    mps = motif_profiles(motifs)
+    mps = profiles(motifs)
     mp_arr = np.array(list(mps.values())).T
     con_motif = ''
 
@@ -337,7 +337,7 @@ def greedy_motif_search(dna, k, t):
         motifs = [dna[0][i:i+k]]
 
         for j in range(1, t):
-            profile = motif_profiles(motifs[0:j])
+            profile = profiles(motifs[0:j])
             motifs.append(profile_most_probable_kmer(dna[j], k, profile))
 
         if score_consensus_motif(motifs) < score_consensus_motif(best_motifs):
@@ -393,8 +393,8 @@ def profile_entropy(profile: dict) -> float:
 def pseudo_count_motifs(motifs: list) -> dict:
     '''
     Count the number of occurrences of each nucleotide in each colum
-    of the motifs. If lap_succsion is set to true then apply Laplace's rule of
-    Succession to prevent non-zero probabilities from arising.
+    of the motifs. Use Laplace's rule of Succession to prevent zero
+    probabilities from arising.
     '''
 
     if len(motifs) == 0 or len(motifs[0]) == 0:
@@ -402,10 +402,10 @@ def pseudo_count_motifs(motifs: list) -> dict:
 
     motif_len = len(motifs[0])
     count = {
-        'A': np.ones(motif_len, dtype='uint8'),
-        'C': np.ones(motif_len, dtype='uint8'),
-        'G': np.ones(motif_len, dtype='uint8'),
-        'T': np.ones(motif_len, dtype='uint8')
+        'A': [1]*motif_len,
+        'C': [1]*motif_len,
+        'G': [1]*motif_len,
+        'T': [1]*motif_len
     }
     no_motifs = len(motifs)
 
@@ -417,16 +417,163 @@ def pseudo_count_motifs(motifs: list) -> dict:
     return count
 
 
-def pseudo_motif_profiles(motifs):
-    '''Determine the profiles of the motifs by normalizing nucleotides frequencies.'''
+def pseudo_profiles(motifs):
+    '''
+    Determine the profiles of the motifs by normalizing nucleotides frequencies,
+    using Laplace's Succession
+    '''
 
     if len(motifs) == 0 or len(motifs[0]) == 0:
         raise Exception('motifs args is empty.')
     
-    no_motifs = len(motifs)
+    motif_len = len(motifs[0])
     profiles = pseudo_count_motifs(motifs)
+    sums = []
+
+    for i in range(motif_len):
+        sums.append(profiles['A'][i]+profiles['C'][i]+profiles['G'][i]+profiles['T'][i])
+
+    sums = np.array(sums)
 
     for n in profiles:
-        profiles[n] = profiles[n]/no_motifs
+        temp = np.array(profiles[n])
+        profiles[n] = list(temp/(sums))
 
     return profiles
+
+
+def pseudo_greedy_motif_search(dna, k, t):
+    '''Greedily determine the best rated motifs for a dna sequence.'''
+
+    best_motifs = [d[0:k] for d in dna]
+    dna_len = len(dna[0])
+
+    for i in range(dna_len-k+1):
+        motifs = [dna[0][i:i+k]]
+
+        for j in range(1, t):
+            profile = pseudo_profiles(motifs[0:j])
+            motifs.append(profile_most_probable_kmer(dna[j], k, profile))
+
+        if score_consensus_motif(motifs) < score_consensus_motif(best_motifs):
+            best_motifs = motifs
+
+    return best_motifs
+
+
+def motifs(profile, k, dna):
+    '''Produce a list of profile-most probable k-mers from profile and dna sequences.'''
+
+    k_mers = []
+
+    for seq in dna:
+        k_mers.append(profile_most_probable_kmer(seq, k, profile))
+
+    return k_mers
+
+
+def random_motifs(dna, k):
+    '''Choose a random k-mer from each string in dna.'''
+
+    motifs = []
+    for seq in dna:
+        seq_len = len(seq)
+        idx = randint(0, seq_len-k)
+        motifs.append(seq[idx:idx+k])
+
+    return motifs
+
+
+def randomized_motif_search(dna, k, t):
+    '''
+    Randomly generate a list of motifs until the scores associated with those
+    motifs stops improving.
+    '''
+
+    temp_motifs = random_motifs(dna, k)
+    best_motifs = temp_motifs
+
+    while True:
+        profile = pseudo_profiles(temp_motifs)
+        temp_motifs = motifs(profile, k, dna)
+        if score_consensus_motif(temp_motifs) < score_consensus_motif(best_motifs):
+            best_motifs = temp_motifs
+        else:
+            return best_motifs
+        
+
+def normalize(probs: dict) -> dict:
+    '''
+    Normalize probabilties, so that their sum is equal to 1.0.
+    
+    Parameters
+    ----------
+
+    probs: dict
+        A dictionary of probabilities associated with a k-mer.
+        E.g. {'A': 0.1, 'C': 0.1, 'G': 0.1, 'T': 0.1}
+
+    Returns
+    -------
+        A dictionary of normalized probabilities.
+        E.g. {'A': 0.25, 'C': 0.25, 'G': 0.25, 'T': 0.25}
+    '''
+
+    prob_total = sum(list(probs.values()))
+
+    norm_probs = probs.copy()
+    for key in probs:
+        norm_probs[key] = probs[key]/(prob_total)
+
+    return norm_probs
+    
+
+def weighted_die(probs: dict) -> str:
+    '''Return a randomly chosen weighted str from probs.'''
+
+    options = list(probs.keys())
+    weights = list(probs.values())
+    k_mer = np.random.choice(options, p=weights)
+
+    return str(k_mer)
+
+
+def profile_generated_str(seq, profile, k):
+    n = len(seq)
+    probabilities = {}
+    
+    for i in range(0,n-k+1):
+        probabilities[seq[i:i+k]] = profile_prob(seq[i:i+k], profile)
+
+    probabilities = normalize(probabilities)
+    
+    return weighted_die(probabilities)
+
+
+def gibbs_sampler(dna, k, t, n):
+    '''
+    Using the Gibbs Sampler algorithm, compute a set of motifs with high scoring values.
+    '''
+    t = len(dna)
+    dna_len = len(dna[0])
+    rand_k_mer_idx = np.random.choice(range(1, dna_len-k+1), size=t)
+    motifs = []
+    for seq, idx in zip(dna, rand_k_mer_idx):
+        motifs.append(seq[idx:idx+k])
+
+    best_motifs = motifs
+
+    for j in range(1, n):
+        i = np.random.choice(range(1,t), 1)[0]
+        temp_motifs = []
+        for idx, m in enumerate(motifs):
+            if idx != i:
+                temp_motifs.append(m)
+        prof = pseudo_profiles(temp_motifs)
+        motif_i = profile_generated_str(dna[i], prof, k)
+        motifs[i] = motif_i
+
+        if score_consensus_motif(motifs) < score_consensus_motif(best_motifs):
+            best_motifs = motifs
+
+    return best_motifs
